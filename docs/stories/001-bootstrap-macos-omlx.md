@@ -122,7 +122,7 @@ See Completion Notes for on-box results.
 - `make setup` / `./scripts/setup.sh --yes`: idempotent second run reports no changes.
 - oMLX `0.8.0rc1` via Homebrew (no Xcode → no custom kernels; documented).
 - Binds `0.0.0.0:8000`; `Authorization: Bearer` required (401 without).
-- Reachable: LAN `192.168.61.201`, `.local`, Tailscale `bingc-studio5.spitz-royal.ts.net`.
+- Reachable over LAN, `.local`, and Tailscale (URLs kept in local `.env` only).
 - `memory_guard_tier=balanced` required for brain+worker residency (`safe` was too tight).
 - **Wired-limit LaunchDaemon not installed** — sudo password unavailable in agent session. Run:
   `./scripts/setup.sh --yes --tune-wired` (or see `docs/host-setup.md`). Still `iogpu.wired_limit_mb=0`.
@@ -148,7 +148,7 @@ See Completion Notes for on-box results.
 **Bench (quick, worker)**
 - Decode ~145 tok/s @1k; concurrency x2 aggregate 1.27× (flagged <1.3× threshold).
 - Prefix-cache TTFT 0.96s → 0.10s (−90%).
-- Results: `benchmarks/results/2026-11-13-bingc-studio5.jsonl`.
+- Results: `benchmarks/results/2026-11-13-host.jsonl`.
 
 **Deferred / follow-ups**
 - User: install wired-limit daemon (`--tune-wired`) and optionally Xcode+custom kernels.
@@ -159,13 +159,13 @@ See Completion Notes for on-box results.
 ### File List
 
 - `LICENSE`, `Makefile`, `README.md`, `.gitignore`, `.env.example`, `models.yaml`
-- `scripts/setup.sh`, `scripts/apply-models.py`, `scripts/sync-litellm.py`, `scripts/test-models.py`, `scripts/status.py`, `scripts/bench.py`, `scripts/bench-report.py`
+- `scripts/setup.sh`, `scripts/apply-models.py`, `scripts/sync-litellm.py`, `scripts/render-app-configs.py`, `scripts/test-models.py`, `scripts/status.py`, `scripts/bench.py`, `scripts/bench-report.py`
 - `scripts/launchdaemons/com.macos-omlx.wired-limit.plist`
 - `tests/tool_use/` (`run.sh`, `test_tools.py`, `requirements.txt`, `README.md`, `.gitignore`)
 - `docs/stories/` (`README.md`, `_TEMPLATE.md`, `001-bootstrap-macos-omlx.md`)
 - `docs/improvements/README.md` (pointer)
 - `docs/host-setup.md`, `docs/troubleshooting.md`, `docs/upgrading.md`, `docs/investigations/README.md`
-- `docs/app-configs/` (`README.md`, `hermes-config.yaml`, `litellm-static-example.yaml`)
-- `benchmarks/README.md`, `benchmarks/results/.gitkeep`, `benchmarks/results/2026-11-13-bingc-studio5.jsonl`
+- `docs/app-configs/` (`README.md`, `*.yaml.template`; render via `make app-configs`)
+- `benchmarks/README.md`, `benchmarks/results/.gitkeep`, `benchmarks/results/2026-11-13-host.jsonl`
 
 ## QA Results

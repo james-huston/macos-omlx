@@ -1,6 +1,9 @@
 # Local secrets / overrides
 .env
 
+# Host-specific rendered client configs (from docs/app-configs/*.yaml.template)
+docs/app-configs/generated/*.yaml
+
 # Python
 __pycache__/
 *.py[cod]

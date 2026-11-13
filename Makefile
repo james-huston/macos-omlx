@@ -20,13 +20,14 @@ PYTHON ?= $(shell if [ -x .venv/bin/python ]; then echo .venv/bin/python; \
 SETUP  := $(SCRIPTS)/setup.sh
 APPLY  := $(PYTHON) $(SCRIPTS)/apply-models.py
 SYNC   := $(PYTHON) $(SCRIPTS)/sync-litellm.py
+RENDER := $(PYTHON) $(SCRIPTS)/render-app-configs.py
 TEST   := $(PYTHON) $(SCRIPTS)/test-models.py
 STATUS := $(PYTHON) $(SCRIPTS)/status.py
 BENCH  := $(PYTHON) $(SCRIPTS)/bench.py
 REPORT := $(PYTHON) $(SCRIPTS)/bench-report.py
 
 .DEFAULT_GOAL := help
-.PHONY: help setup models-apply sync-litellm test-models status bench bench-report tool-use
+.PHONY: help setup models-apply sync-litellm app-configs test-models status bench bench-report tool-use
 
 help: ## Show this help
 	@echo "macos-omlx — make targets:"
@@ -36,7 +37,7 @@ help: ## Show this help
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 	@echo
 	@echo "Common flags (Make vars → script flags):"
-	@echo "  DRY_RUN=1  NO_DOWNLOAD=1  NO_DELETE=1  RESET=1  ADOPT=1"
+	@echo "  DRY_RUN=1  NO_DOWNLOAD=1  NO_DELETE=1  RESET=1  ADOPT=1  MODEL_PREFIX=…"
 	@echo "  VIA=upstream|litellm  MODELS='name1 name2'  QUICK=1  POWER=1"
 	@echo
 	@echo "Example:"
@@ -68,12 +69,16 @@ sync-litellm: ## Mirror this host's oMLX models into LiteLLM (owner-scoped)
 		$(if $(MODEL_API_KEY),--model-api-key $(MODEL_API_KEY)) \
 		$(if $(PROVIDER),--provider $(PROVIDER)) \
 		$(if $(OWNER),--owner $(OWNER)) \
+		$(if $(MODEL_PREFIX),--model-prefix $(MODEL_PREFIX)) \
 		$(if $(DRY_RUN),--dry-run) \
 		$(if $(NO_DELETE),--no-delete) \
 		$(if $(RESET),--reset) \
 		$(if $(ADOPT),--adopt) \
 		$(if $(ALLOW_SHARED_NAMES),--allow-shared-names) \
 		$(if $(SELF_TEST),--self-test)
+
+app-configs: ## Render docs/app-configs/*.yaml.template → generated/ (from .env)
+	@$(RENDER) $(if $(DRY_RUN),--dry-run)
 
 test-models: ## Smoke-test served models (VIA=upstream|litellm, MODELS=subset)
 	@$(TEST) \

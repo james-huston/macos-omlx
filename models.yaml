@@ -27,11 +27,14 @@
 #
 # Top-level
 # ---------
-#   owner:   stable LiteLLM model_info.managed_by string (NOT a hostname)
-#   memory:  budget knobs for apply-models memory check
-#   cost:    electricity + amortization (same formula as battlemage-llama)
+#   owner:                 stable LiteLLM model_info.managed_by (NOT a hostname)
+#   litellm_model_prefix:  optional; prefer LITELLM_MODEL_PREFIX in .env instead
+#                          (default is short hostname + "-")
+#   memory:                budget knobs for apply-models memory check
+#   cost:                  electricity + amortization (same formula as battlemage-llama)
 
 owner: macos-omlx
+# Prefer LITELLM_MODEL_PREFIX in .env over committing a prefix here.
 
 memory:
   total_gb: 128

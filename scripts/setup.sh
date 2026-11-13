@@ -338,6 +338,16 @@ fi
 [[ -n "$(read_env_key UPSTREAM_URL)" ]] || { set_env_key UPSTREAM_URL "http://localhost:${DEFAULT_PORT}"; mark_changed; }
 [[ -n "$(read_env_key OMLX_URL)" ]] || { set_env_key OMLX_URL "http://localhost:${DEFAULT_PORT}"; mark_changed; }
 [[ -n "$(read_env_key LITELLM_OWNER)" ]] || { set_env_key LITELLM_OWNER "macos-omlx"; mark_changed; }
+# LiteLLM / Hermes dropdown prefix (short hostname + "-"); override in .env anytime.
+if [[ -z "$(read_env_key LITELLM_MODEL_PREFIX)" ]]; then
+  _prefix_host="$(hostname -s 2>/dev/null || hostname | cut -d. -f1)"
+  _prefix_host="$(printf '%s' "${_prefix_host}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9_-' '-')"
+  _prefix_host="${_prefix_host#-}" ; _prefix_host="${_prefix_host%-}"
+  [[ -n "${_prefix_host}" ]] || _prefix_host="omlx"
+  set_env_key LITELLM_MODEL_PREFIX "${_prefix_host}-"
+  mark_changed
+  unset _prefix_host
+fi
 
 PORT="$(read_env_key OMLX_PORT)"; PORT="${PORT:-$DEFAULT_PORT}"
 HOST_BIND="$(read_env_key OMLX_HOST)"; HOST_BIND="${HOST_BIND:-$DEFAULT_HOST}"
@@ -575,7 +585,8 @@ Next steps:
   1. Set MODEL_API_BASE in .env to a URL LiteLLM can reach (LAN / .local / Tailscale), not localhost.
   2. make models-apply          # download + pin models from models.yaml
   3. make sync-litellm DRY_RUN=1 && make sync-litellm
-  4. make test-models && make bench
+  4. make app-configs           # render Hermes / LiteLLM templates from .env (gitignored)
+  5. make test-models && make bench
 
 Until battlemage-llama gets owner-scoped sync, run battlemage with NO_DELETE=1
 so it does not delete this host's LiteLLM entries.

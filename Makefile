@@ -20,13 +20,14 @@ PYTHON ?= $(shell if [ -x .venv/bin/python ]; then echo .venv/bin/python; \
 SETUP  := $(SCRIPTS)/setup.sh
 APPLY  := $(PYTHON) $(SCRIPTS)/apply-models.py
 SYNC   := $(PYTHON) $(SCRIPTS)/sync-litellm.py
+RENDER := $(PYTHON) $(SCRIPTS)/render-app-configs.py
 TEST   := $(PYTHON) $(SCRIPTS)/test-models.py
 STATUS := $(PYTHON) $(SCRIPTS)/status.py
 BENCH  := $(PYTHON) $(SCRIPTS)/bench.py
 REPORT := $(PYTHON) $(SCRIPTS)/bench-report.py
 
 .DEFAULT_GOAL := help
-.PHONY: help setup models-apply sync-litellm test-models status bench bench-report tool-use
+.PHONY: help setup models-apply sync-litellm app-configs test-models status bench bench-report tool-use
 
 help: ## Show this help
 	@echo "macos-omlx — make targets:"
@@ -75,6 +76,9 @@ sync-litellm: ## Mirror this host's oMLX models into LiteLLM (owner-scoped)
 		$(if $(ADOPT),--adopt) \
 		$(if $(ALLOW_SHARED_NAMES),--allow-shared-names) \
 		$(if $(SELF_TEST),--self-test)
+
+app-configs: ## Render docs/app-configs/*.yaml.template → generated/ (from .env)
+	@$(RENDER) $(if $(DRY_RUN),--dry-run)
 
 test-models: ## Smoke-test served models (VIA=upstream|litellm, MODELS=subset)
 	@$(TEST) \

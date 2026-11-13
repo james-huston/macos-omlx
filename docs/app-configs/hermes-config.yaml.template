@@ -1,7 +1,8 @@
-# Hermes Agent — reference config for macos-omlx
+# Hermes Agent — generated from hermes-config.yaml.template
 #
-# Copy relevant sections into ~/.hermes/config.yaml (or merge carefully).
-# Replace env var names with ones you already export; never commit real keys.
+# Do not edit generated/hermes-config.yaml by hand — re-run:
+#   make app-configs
+# Then merge/copy into ~/.hermes/config.yaml as needed.
 #
 # Docs: https://hermes-agent.nousresearch.com/docs/
 # Fallback providers: https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers
@@ -11,14 +12,14 @@
 #   - Verify tool calling with: make tool-use MODELS='gpt-oss-120b qwen35-35b-a3b'
 #   - Check fallbacks live: hermes fallback check --live
 #   - Switch models in-session with /model when configured
-
-# Model names below must match LiteLLM model_name after sync (host-prefixed by
-# default, e.g. bingc-studio5-gpt-oss-120b). See LITELLM_MODEL_PREFIX.
+#
+# Model names must match LiteLLM model_name after sync (prefix from
+# LITELLM_MODEL_PREFIX in .env).
 
 model:
-  default: bingc-studio5-gpt-oss-120b   # brain — must match LiteLLM model_name
+  default: ${LITELLM_MODEL_PREFIX}gpt-oss-120b   # brain — must match LiteLLM model_name
   provider: custom
-  base_url: "${LITELLM_URL}/v1"  # e.g. http://litellm-host:4000/v1
+  base_url: "${LITELLM_URL}/v1"
   # api_key from env — Hermes typically reads OPENAI_API_KEY or a key_env you set
   # key_env: LITELLM_API_KEY
 
@@ -30,7 +31,7 @@ fallback_providers:
     # key_env: OPENAI_API_KEY
   # Optional: also list LiteLLM as a named custom fallback with another model:
   # - provider: custom
-  #   model: bingc-studio5-qwen35-35b-a3b
+  #   model: ${LITELLM_MODEL_PREFIX}qwen35-35b-a3b
   #   base_url: "${LITELLM_URL}/v1"
   #   key_env: LITELLM_API_KEY
 
@@ -39,10 +40,10 @@ auxiliary:
   compression:
     base_url: "${LITELLM_URL}/v1"
     # api_key / key_env: LITELLM_API_KEY
-    model: bingc-studio5-qwen35-35b-a3b
+    model: ${LITELLM_MODEL_PREFIX}qwen35-35b-a3b
   title_generation:
     base_url: "${LITELLM_URL}/v1"
-    model: bingc-studio5-qwen35-35b-a3b
+    model: ${LITELLM_MODEL_PREFIX}qwen35-35b-a3b
 
 # Notes
 # -----

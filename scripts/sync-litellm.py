@@ -21,7 +21,7 @@ Configuration (CLI flag > process env > .env in repo root > default):
   --model-api-key  MODEL_API_KEY      OMLX_API_KEY from env/.env, else 'dummy'
   --provider       MODEL_PROVIDER     openai
   --owner          LITELLM_OWNER      models.yaml owner, else macos-omlx
-  --model-prefix   LITELLM_MODEL_PREFIX  short hostname + "-" (e.g. bingc-studio5-)
+  --model-prefix   LITELLM_MODEL_PREFIX  short hostname + "-" (e.g. studio-a-)
                    Prefix applied to LiteLLM model_name only (dropdown labels).
                    Upstream oMLX id is unchanged. Empty string disables.
   --timeout        (HTTP client timeout per request, default 15s)
@@ -214,7 +214,7 @@ def resolve_owner(cli_owner, manifest):
 
 
 def default_model_prefix():
-    """Short hostname with a trailing dash, e.g. bingc-studio5-."""
+    """Short hostname with a trailing dash, e.g. studio-a-."""
     host = socket.gethostname().split(".")[0].strip().lower()
     safe = "".join(c if (c.isalnum() or c in "-_") else "-" for c in host).strip("-_")
     if not safe:

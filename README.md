@@ -73,9 +73,9 @@ that owner. Untagged, static (`db_model: false`), and foreign-owned entries are
 left alone. Existing rows are keyed by `model_info.id`, not `model_name`.
 
 LiteLLM **dropdown names** get a host prefix by default (short hostname + `-`,
-e.g. `bingc-studio5-gpt-oss-120b`) so Hermes / OpenCode can tell this Mac apart
-from battlemage. Change with `LITELLM_MODEL_PREFIX` in `.env`,
-`make sync-litellm MODEL_PREFIX=…`, or `litellm_model_prefix` in `models.yaml`.
+e.g. `<host>-gpt-oss-120b`) so Hermes / OpenCode can tell this Mac apart from
+battlemage. Set `LITELLM_MODEL_PREFIX` in `.env` (preferred), or override with
+`make sync-litellm MODEL_PREFIX=…` / `litellm_model_prefix` in `models.yaml`.
 Empty string disables. Upstream oMLX ids stay unprefixed.
 
 ### Multiple hosts, one LiteLLM
@@ -113,11 +113,17 @@ make bench UPDATE_MANIFEST=1       # write decode_tps etc. back into models.yaml
 
 Results append to `benchmarks/results/<YYYY-MM-DD>-<host>.jsonl` (tracked in git).
 
-## Hermes
+## Hermes / client configs
 
-See [`docs/app-configs/hermes-config.yaml`](docs/app-configs/hermes-config.yaml):
-brain through LiteLLM, one direct paid fallback that bypasses the proxy, worker
-for auxiliary tasks. Models need ≥64k context for agentic tool use.
+Templates live in [`docs/app-configs/`](docs/app-configs/) (no hostnames).
+Render with `.env` values:
+
+```bash
+make app-configs                   # → docs/app-configs/generated/ (gitignored)
+```
+
+Hermes: brain through LiteLLM, one direct paid fallback that bypasses the proxy,
+worker for auxiliary tasks. Models need ≥64k context for agentic tool use.
 
 ## Docs
 
@@ -126,7 +132,7 @@ for auxiliary tasks. Models need ≥64k context for agentic tool use.
 | [`docs/host-setup.md`](docs/host-setup.md) | Manual setup + undos |
 | [`docs/troubleshooting.md`](docs/troubleshooting.md) | Common failures |
 | [`docs/upgrading.md`](docs/upgrading.md) | Bump oMLX, re-test, re-bench |
-| [`docs/app-configs/`](docs/app-configs/) | Hermes + LiteLLM static example |
+| [`docs/app-configs/`](docs/app-configs/) | Hermes + LiteLLM templates (`make app-configs`) |
 | [`docs/stories/`](docs/stories/) | BMAD stories (canonical) |
 | [`docs/improvements/`](docs/improvements/) | Pointer → stories |
 | [`docs/investigations/`](docs/investigations/) | Ad-hoc notes |

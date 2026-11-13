@@ -7,8 +7,11 @@
 #
 # Keys come from environment variables on the LiteLLM host.
 
+# model_name is the client-facing label (prefer host prefix, matching DB sync).
+# litellm_params.model keeps the unprefixed upstream oMLX id.
+
 model_list:
-  - model_name: gpt-oss-120b
+  - model_name: bingc-studio5-gpt-oss-120b
     litellm_params:
       model: openai/gpt-oss-120b
       api_base: os.environ/MODEL_API_BASE   # e.g. http://bingc-studio5.local:8000/v1
@@ -20,7 +23,7 @@ model_list:
       mode: chat
       max_input_tokens: 131072
 
-  - model_name: qwen35-35b-a3b
+  - model_name: bingc-studio5-qwen35-35b-a3b
     litellm_params:
       model: openai/qwen35-35b-a3b
       api_base: os.environ/MODEL_API_BASE
@@ -32,7 +35,7 @@ model_list:
       mode: chat
       max_input_tokens: 131072
 
-  - model_name: qwen3-embedding-0.6b
+  - model_name: bingc-studio5-qwen3-embedding-0.6b
     litellm_params:
       model: openai/qwen3-embedding-0.6b
       api_base: os.environ/MODEL_API_BASE

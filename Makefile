@@ -36,7 +36,7 @@ help: ## Show this help
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 	@echo
 	@echo "Common flags (Make vars → script flags):"
-	@echo "  DRY_RUN=1  NO_DOWNLOAD=1  NO_DELETE=1  RESET=1  ADOPT=1"
+	@echo "  DRY_RUN=1  NO_DOWNLOAD=1  NO_DELETE=1  RESET=1  ADOPT=1  MODEL_PREFIX=…"
 	@echo "  VIA=upstream|litellm  MODELS='name1 name2'  QUICK=1  POWER=1"
 	@echo
 	@echo "Example:"
@@ -68,6 +68,7 @@ sync-litellm: ## Mirror this host's oMLX models into LiteLLM (owner-scoped)
 		$(if $(MODEL_API_KEY),--model-api-key $(MODEL_API_KEY)) \
 		$(if $(PROVIDER),--provider $(PROVIDER)) \
 		$(if $(OWNER),--owner $(OWNER)) \
+		$(if $(MODEL_PREFIX),--model-prefix $(MODEL_PREFIX)) \
 		$(if $(DRY_RUN),--dry-run) \
 		$(if $(NO_DELETE),--no-delete) \
 		$(if $(RESET),--reset) \

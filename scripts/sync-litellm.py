@@ -21,6 +21,9 @@ Configuration (CLI flag > process env > .env in repo root > default):
   --model-api-key  MODEL_API_KEY      OMLX_API_KEY from env/.env, else 'dummy'
   --provider       MODEL_PROVIDER     openai
   --owner          LITELLM_OWNER      models.yaml owner, else macos-omlx
+  --model-prefix   LITELLM_MODEL_PREFIX  short hostname + "-" (e.g. bingc-studio5-)
+                   Prefix applied to LiteLLM model_name only (dropdown labels).
+                   Upstream oMLX id is unchanged. Empty string disables.
   --timeout        (HTTP client timeout per request, default 15s)
 
 Per-model litellm_params timeout/num_retries default to 900 / 0; override with
@@ -208,6 +211,49 @@ def resolve_owner(cli_owner, manifest):
     if yo is not None:
         return yo
     return DEFAULT_OWNER
+
+
+def default_model_prefix():
+    """Short hostname with a trailing dash, e.g. bingc-studio5-."""
+    host = socket.gethostname().split(".")[0].strip().lower()
+    safe = "".join(c if (c.isalnum() or c in "-_") else "-" for c in host).strip("-_")
+    if not safe:
+        safe = "omlx"
+    return f"{safe}-"
+
+
+def resolve_model_prefix(cli_prefix, manifest):
+    """CLI > LITELLM_MODEL_PREFIX env/.env > models.yaml litellm_model_prefix > hostname-."""
+    if cli_prefix is not None:
+        return str(cli_prefix)
+    if "LITELLM_MODEL_PREFIX" in os.environ:
+        return os.environ["LITELLM_MODEL_PREFIX"]
+    if "LITELLM_MODEL_PREFIX" in DOTENV:
+        return DOTENV["LITELLM_MODEL_PREFIX"]
+    if manifest and "litellm_model_prefix" in manifest:
+        return str(manifest.get("litellm_model_prefix") or "")
+    return default_model_prefix()
+
+
+def public_model_name(upstream_id, prefix):
+    """LiteLLM model_name shown to clients (Hermes / OpenCode dropdowns)."""
+    if not prefix:
+        return upstream_id
+    return f"{prefix}{upstream_id}"
+
+
+def upstream_id_from_entry(entry, prefix):
+    """Recover the oMLX /v1 model id from a LiteLLM DB entry."""
+    info = entry.get("info") or {}
+    if info.get("upstream_model_id"):
+        return str(info["upstream_model_id"])
+    model = entry.get("model") or ""
+    if "/" in model:
+        return model.split("/", 1)[1]
+    name = entry.get("model_name") or ""
+    if prefix and name.startswith(prefix):
+        return name[len(prefix):]
+    return name
 
 
 def resolve_model_api_key(cli_key):
@@ -427,6 +473,9 @@ def parse_args():
                    help="api_key stored with each model (default OMLX_API_KEY or dummy)")
     p.add_argument("--provider", help="LiteLLM provider prefix (default openai)")
     p.add_argument("--owner", help=f"ownership tag managed_by (default {DEFAULT_OWNER})")
+    p.add_argument("--model-prefix", dest="model_prefix", default=None,
+                   help='prefix for LiteLLM model_name (default: short hostname + "-"; '
+                        'empty string disables)')
     p.add_argument("--timeout", type=float, default=15.0,
                    help="HTTP client timeout in seconds for each API call (default 15)")
     p.add_argument("--dry-run", action="store_true", help="show the plan, change nothing")
@@ -448,6 +497,7 @@ def main():
     manifest = _load_yaml_manifest()
     owner = resolve_owner(args.owner, manifest)
     managed_host = setting(None, "MODEL_MANAGED_HOST", socket.gethostname())
+    model_prefix = resolve_model_prefix(args.model_prefix, manifest)
 
     upstream = setting(args.upstream, "UPSTREAM_URL", "http://localhost:8000")
     litellm = setting(args.litellm, "LITELLM_URL", "http://localhost:4000")
@@ -474,6 +524,8 @@ def main():
     print(f"api_base: {api_base}  (provider: {provider})")
     print(f"owner   : {owner}")
     print(f"managed_host: {managed_host}")
+    print(f"name prefix: {model_prefix!r}  "
+          f"(LiteLLM model_name = prefix + upstream id; set LITELLM_MODEL_PREFIX to change)")
     if args.dry_run:
         print("mode    : DRY RUN — no changes will be made")
     print()
@@ -506,20 +558,24 @@ def main():
         key=str.lower,
     )
 
-    def desired_params(model_id):
+    def desired_params(upstream_id):
         return {
-            "model": f"{provider}/{model_id}",
+            "model": f"{provider}/{upstream_id}",
             "api_base": api_base,
             "api_key": model_api_key,
             "num_retries": model_num_retries,
             "timeout": model_timeout,
         }
 
-    def desired_info(model_id):
-        info = dict(model_infos.get(model_id) or {})
+    def desired_info(upstream_id):
+        info = dict(model_infos.get(upstream_id) or {})
         info["managed_by"] = owner
         info["managed_host"] = managed_host
+        info["upstream_model_id"] = upstream_id
         return info
+
+    def desired_public_name(upstream_id):
+        return public_model_name(upstream_id, model_prefix)
 
     if args.reset:
         purge = [e for e in by_id.values() if e["kind"] == "owned"]
@@ -536,23 +592,36 @@ def main():
         print()
 
     to_add, to_update, to_delete, to_adopt, skipped = [], [], [], [], []
+    desired_public = {desired_public_name(mid): mid for mid in source_ids}
 
-    for model_id in source_ids:
-        want_params = desired_params(model_id)
-        want_info = desired_info(model_id)
-        owned = owned_entries_for_name(model_id, by_id)
+    for upstream_id in source_ids:
+        pub = desired_public_name(upstream_id)
+        want_params = desired_params(upstream_id)
+        want_info = desired_info(upstream_id)
+        # Match owned rows by public LiteLLM name, or by upstream id (legacy unprefixed).
+        owned = owned_entries_for_name(pub, by_id)
+        if not owned and pub != upstream_id:
+            owned = [
+                e for e in owned_entries_for_name(upstream_id, by_id)
+                if upstream_id_from_entry(e, model_prefix) == upstream_id
+            ]
 
         if not owned:
-            if name_has_foreign_or_unowned(model_id, by_id, args.allow_shared_names):
-                skipped.append((model_id, "model_name collides with foreign/unowned entry"))
+            if name_has_foreign_or_unowned(pub, by_id, args.allow_shared_names):
+                skipped.append((pub, "model_name collides with foreign/unowned entry"))
                 continue
-            to_add.append(model_id)
+            to_add.append(upstream_id)
             continue
 
         for entry in owned:
-            drift = params_drifted(entry, want_params) or info_drifted(model_id, entry.get("info"), want_info)
+            name_drift = entry.get("model_name") != pub
+            drift = (
+                name_drift
+                or params_drifted(entry, want_params)
+                or info_drifted(upstream_id, entry.get("info"), want_info)
+            )
             if drift:
-                to_update.append((model_id, entry["id"]))
+                to_update.append((upstream_id, entry["id"], entry.get("model_name")))
 
     if args.adopt:
         for entry in by_id.values():
@@ -560,23 +629,29 @@ def main():
                 continue
             if entry.get("api_base") != api_base:
                 continue
-            name = entry.get("model_name")
-            if not name:
-                continue
-            if name_has_foreign_or_unowned(name, by_id, args.allow_shared_names,
+            # Map adopted upstream id → prefixed public name
+            upstream_id = upstream_id_from_entry(entry, model_prefix)
+            pub = desired_public_name(upstream_id)
+            if name_has_foreign_or_unowned(pub, by_id, args.allow_shared_names,
                                             exclude_id=entry["id"]):
-                skipped.append((name, "adopt skipped — name collides with foreign/unowned"))
+                skipped.append((pub, "adopt skipped — name collides with foreign/unowned"))
                 continue
-            if any(a[0] == name for a in to_adopt):
+            if any(a[0] == upstream_id for a in to_adopt):
                 continue
-            to_adopt.append((name, entry["id"]))
+            to_adopt.append((upstream_id, entry["id"], entry.get("model_name")))
 
-    owned_names_in_desired = {n for n in source_ids}
     for entry in by_id.values():
         if entry["kind"] != "owned":
             continue
         name = entry.get("model_name")
-        if not name or name in owned_names_in_desired:
+        if not name:
+            continue
+        if name in desired_public:
+            continue
+        # Legacy unprefixed name that now maps to a desired upstream id → update path
+        up = upstream_id_from_entry(entry, model_prefix)
+        if up in source_ids and desired_public_name(up) != name:
+            # Already queued as to_update via the owned match above when present
             continue
         if args.no_delete:
             skipped.append((name, "stale owned entry, but --no-delete set"))
@@ -584,10 +659,14 @@ def main():
             to_delete.append((name, entry["id"]))
 
     print(f"source models : {len(source_ids)}")
-    print(f"  to add      : {len(to_add)}  {to_add if to_add else ''}")
-    print(f"  to re-point : {len(to_update)}  {to_update if to_update else ''}")
+    print(f"  public names: {[desired_public_name(m) for m in source_ids]}")
+    print(f"  to add      : {len(to_add)}  "
+          f"{[desired_public_name(m) for m in to_add] if to_add else ''}")
+    print(f"  to re-point : {len(to_update)}  "
+          f"{[(desired_public_name(m), old) for m, _, old in to_update] if to_update else ''}")
     print(f"  to delete   : {len(to_delete)}  {[n for n, _ in to_delete] if to_delete else ''}")
-    print(f"  to adopt    : {len(to_adopt)}  {to_adopt if to_adopt else ''}")
+    print(f"  to adopt    : {len(to_adopt)}  "
+          f"{[desired_public_name(u) for u, _, _ in to_adopt] if to_adopt else ''}")
     if skipped:
         for name, why in skipped:
             print(f"  skip        : {name} ({why})")
@@ -605,22 +684,25 @@ def main():
         print("dry run complete — nothing changed.")
         return
 
-    for model_id in to_add:
-        print(f"+ add    {model_id}")
-        add_model(litellm, admin_key, model_id, desired_params(model_id), args.timeout,
-                  model_info=desired_info(model_id))
+    for upstream_id in to_add:
+        pub = desired_public_name(upstream_id)
+        print(f"+ add    {pub}  (upstream={upstream_id})")
+        add_model(litellm, admin_key, pub, desired_params(upstream_id), args.timeout,
+                  model_info=desired_info(upstream_id))
 
-    for model_id, mid in to_update:
-        print(f"~ repoint {model_id} (id={mid})")
+    for upstream_id, mid, old_name in to_update:
+        pub = desired_public_name(upstream_id)
+        print(f"~ repoint {old_name} -> {pub} (id={mid})")
         delete_model(litellm, admin_key, mid, args.timeout)
-        add_model(litellm, admin_key, model_id, desired_params(model_id), args.timeout,
-                  model_info=desired_info(model_id))
+        add_model(litellm, admin_key, pub, desired_params(upstream_id), args.timeout,
+                  model_info=desired_info(upstream_id))
 
-    for name, mid in to_adopt:
-        print(f"* adopt  {name} (id={mid})")
+    for upstream_id, mid, old_name in to_adopt:
+        pub = desired_public_name(upstream_id)
+        print(f"* adopt  {old_name} -> {pub} (id={mid})")
         delete_model(litellm, admin_key, mid, args.timeout)
-        add_model(litellm, admin_key, name, desired_params(name), args.timeout,
-                  model_info=desired_info(name))
+        add_model(litellm, admin_key, pub, desired_params(upstream_id), args.timeout,
+                  model_info=desired_info(upstream_id))
 
     for name, mid in to_delete:
         print(f"- delete {name} (id={mid})")

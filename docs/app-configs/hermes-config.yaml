@@ -12,8 +12,11 @@
 #   - Check fallbacks live: hermes fallback check --live
 #   - Switch models in-session with /model when configured
 
+# Model names below must match LiteLLM model_name after sync (host-prefixed by
+# default, e.g. bingc-studio5-gpt-oss-120b). See LITELLM_MODEL_PREFIX.
+
 model:
-  default: gpt-oss-120b          # brain — must match LiteLLM model_name
+  default: bingc-studio5-gpt-oss-120b   # brain — must match LiteLLM model_name
   provider: custom
   base_url: "${LITELLM_URL}/v1"  # e.g. http://litellm-host:4000/v1
   # api_key from env — Hermes typically reads OPENAI_API_KEY or a key_env you set
@@ -27,7 +30,7 @@ fallback_providers:
     # key_env: OPENAI_API_KEY
   # Optional: also list LiteLLM as a named custom fallback with another model:
   # - provider: custom
-  #   model: qwen35-35b-a3b
+  #   model: bingc-studio5-qwen35-35b-a3b
   #   base_url: "${LITELLM_URL}/v1"
   #   key_env: LITELLM_API_KEY
 
@@ -36,10 +39,10 @@ auxiliary:
   compression:
     base_url: "${LITELLM_URL}/v1"
     # api_key / key_env: LITELLM_API_KEY
-    model: qwen35-35b-a3b
+    model: bingc-studio5-qwen35-35b-a3b
   title_generation:
     base_url: "${LITELLM_URL}/v1"
-    model: qwen35-35b-a3b
+    model: bingc-studio5-qwen35-35b-a3b
 
 # Notes
 # -----

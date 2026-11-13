@@ -8,8 +8,9 @@ LiteLLM). **No secrets** — keys come from environment variables.
 When you add, rename, disable, or remove a model:
 
 1. Update [`models.yaml`](../../models.yaml) and run `make models-apply`.
-2. Run `make sync-litellm` (owner-scoped) so LiteLLM matches.
-3. Mirror the change into every file in this folder that lists model ids
+2. Run `make sync-litellm` (owner-scoped) so LiteLLM matches. Public names are
+   host-prefixed by default (`LITELLM_MODEL_PREFIX`, e.g. `bingc-studio5-…`).
+3. Mirror the **prefixed** LiteLLM `model_name` into every file in this folder
    (Hermes brain/worker names, static LiteLLM snippets, etc.).
 4. Re-run `make test-models` and `./tests/tool_use/run.sh` for affected models.
 5. Update capability flags in the model's `litellm:` block to match what the

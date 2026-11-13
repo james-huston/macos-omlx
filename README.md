@@ -72,6 +72,12 @@ Every model this script creates carries `model_info.managed_by: macos-omlx`
 that owner. Untagged, static (`db_model: false`), and foreign-owned entries are
 left alone. Existing rows are keyed by `model_info.id`, not `model_name`.
 
+LiteLLM **dropdown names** get a host prefix by default (short hostname + `-`,
+e.g. `bingc-studio5-gpt-oss-120b`) so Hermes / OpenCode can tell this Mac apart
+from battlemage. Change with `LITELLM_MODEL_PREFIX` in `.env`,
+`make sync-litellm MODEL_PREFIX=…`, or `litellm_model_prefix` in `models.yaml`.
+Empty string disables. Upstream oMLX ids stay unprefixed.
+
 ### Multiple hosts, one LiteLLM
 
 | Tag | Meaning |

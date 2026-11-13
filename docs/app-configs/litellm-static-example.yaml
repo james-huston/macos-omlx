@@ -1,0 +1,42 @@
+# Optional: register macos-omlx models in LiteLLM's static config.yaml instead
+# of (or in addition to) the DB sync (`make sync-litellm`).
+#
+# IMPORTANT: static entries have model_info.db_model=false and are INVISIBLE to
+# the sync script — it will never update or delete them. Prefer DB sync with
+# model_info.managed_by: macos-omlx for fleet hosts that share one proxy.
+#
+# Keys come from environment variables on the LiteLLM host.
+
+model_list:
+  - model_name: gpt-oss-120b
+    litellm_params:
+      model: openai/gpt-oss-120b
+      api_base: os.environ/MODEL_API_BASE   # e.g. http://bingc-studio5.local:8000/v1
+      api_key: os.environ/OMLX_API_KEY
+      num_retries: 0
+      timeout: 900
+    model_info:
+      managed_by: macos-omlx               # informational only for static entries
+      mode: chat
+      max_input_tokens: 131072
+
+  - model_name: qwen35-35b-a3b
+    litellm_params:
+      model: openai/qwen35-35b-a3b
+      api_base: os.environ/MODEL_API_BASE
+      api_key: os.environ/OMLX_API_KEY
+      num_retries: 0
+      timeout: 900
+    model_info:
+      managed_by: macos-omlx
+      mode: chat
+      max_input_tokens: 131072
+
+  - model_name: qwen3-embedding-0.6b
+    litellm_params:
+      model: openai/qwen3-embedding-0.6b
+      api_base: os.environ/MODEL_API_BASE
+      api_key: os.environ/OMLX_API_KEY
+    model_info:
+      managed_by: macos-omlx
+      mode: embedding

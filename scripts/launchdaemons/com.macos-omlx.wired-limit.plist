@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Raises the Metal/IOGPU wired-memory limit so large resident MLX models can
+  use more of unified memory. Placeholder __WIRED_LIMIT_MB__ is replaced by
+  scripts/setup.sh.
+
+  Undo:
+    sudo launchctl bootout system/com.macos-omlx.wired-limit
+    sudo rm -f /Library/LaunchDaemons/com.macos-omlx.wired-limit.plist
+    sudo sysctl iogpu.wired_limit_mb=0
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.macos-omlx.wired-limit</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/sbin/sysctl</string>
+    <string>iogpu.wired_limit_mb=__WIRED_LIMIT_MB__</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <false/>
+</dict>
+</plist>

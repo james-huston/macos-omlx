@@ -1,0 +1,163 @@
+# macos-omlx — model manifest
+#
+# Single source of truth for which models this Mac Studio hosts and how they
+# are registered in LiteLLM. Edit THIS file; then:
+#   make models-apply → make sync-litellm → make test-models
+#
+# Per-model fields
+# ----------------
+#   name       (required) id / alias advertised by oMLX (/v1/models)
+#   enabled    default true; false keeps a documented candidate offline
+#
+#   Source — exactly ONE of:
+#     repo: (+ optional revision:)   Hugging Face id downloaded into OMLX_MODEL_DIR/org/name/
+#     path:                          existing local directory already under the model dir
+#
+#   Optional:
+#     type       llm | vlm | embedding | reranker
+#     role       brain | worker | embedding | …  (docs / budget rules only)
+#     pin        keep resident (Admin API is_pinned)
+#     ttl        idle unload seconds (ignored when pinned)
+#     alias      extra name accepted by /v1
+#     ctx        advertised max input tokens (LiteLLM max_input_tokens; Admin max_context_window when supported)
+#     est_mem_gb estimated resident weight memory for budget checks
+#     decode_tps / prefill_tps / concurrency   measured; drive cost + docs
+#     litellm:   model_info fields (capability flags, description, mode, …)
+#     source / notes
+#
+# Top-level
+# ---------
+#   owner:   stable LiteLLM model_info.managed_by string (NOT a hostname)
+#   memory:  budget knobs for apply-models memory check
+#   cost:    electricity + amortization (same formula as battlemage-llama)
+
+owner: macos-omlx
+
+memory:
+  total_gb: 128
+  reserved_os_gb: 12          # keep for macOS / apps
+  kv_headroom_gb: 18          # room for long agent contexts on top of pinned weights
+  # Budget check: sum(est_mem_gb of pinned) + kv_headroom_gb + reserved_os_gb <= total_gb
+  # Never pin two role:brain models at once — the check fails (and --strict exits 1).
+
+cost:
+  # output $/token = watts/1000 * (1/decode_tps/3600) * usd_per_kwh * amortization
+  watts: 120                  # TODO: measure with make bench POWER=1
+  usd_per_kwh: 0.18
+  amortization: 3
+  input_factor: 4             # prefill faster than decode → cheaper input
+
+models:
+
+  # ===========================================================================
+  # PINNED — intended to stay resident together on 128 GB
+  # ===========================================================================
+
+  - name: gpt-oss-120b
+    enabled: true
+    type: llm
+    role: brain
+    pin: true
+    alias: brain
+    repo: mlx-community/gpt-oss-120b-MXFP4-Q4
+    ctx: 131072
+    est_mem_gb: 63
+    # decode_tps:           # filled by make bench … --update-manifest
+    litellm:
+      description: "gpt-oss-120b MXFP4 (~63 GB). Primary brain."
+      supports_function_calling: true
+      supports_tool_choice: false   # tool_choice=required failed on 2026-11-13 tool-use suite
+      supports_reasoning: true
+    source: "HF mlx-community/gpt-oss-120b-MXFP4-Q4 (~58 GB on disk measured)"
+    notes: "Pinned brain. Do not also pin qwen35-122b. Agentic-scale tool probe PASSED; required_tool_choice FAILED; parallel advisory WARN."
+
+  - name: qwen35-35b-a3b
+    enabled: true
+    type: llm
+    role: worker
+    pin: true
+    alias: worker
+    repo: mlx-community/Qwen3.5-35B-A3B-4bit
+    ctx: 131072
+    est_mem_gb: 20
+    litellm:
+      description: "Qwen3.5-35B-A3B 4-bit (~20 GB). Fast worker for compression/titles/aux agent work."
+      supports_function_calling: true
+      supports_tool_choice: false   # tool_choice=required failed on 2026-11-13 tool-use suite
+      supports_reasoning: true
+      supports_vision: true
+    source: "HF mlx-community/Qwen3.5-35B-A3B-4bit (~20.4 GB)"
+    notes: "Needs oMLX custom kernels for best speed. Fallback: mlx-community/Qwen3-30B-A3B-4bit if tool calls break. Agentic-scale tool probe PASSED; required_tool_choice FAILED."
+
+  - name: qwen3-embedding-0.6b
+    enabled: true
+    type: embedding
+    role: embedding
+    pin: true
+    repo: mlx-community/Qwen3-Embedding-0.6B-8bit
+    ctx: 32768
+    est_mem_gb: 1
+    litellm:
+      description: "Qwen3-Embedding 0.6B 8-bit (~0.65 GB)."
+      mode: embedding
+    source: "HF mlx-community/Qwen3-Embedding-0.6B-8bit (~649 MB)"
+    notes: "Registered with mode: embedding in LiteLLM."
+
+  # ===========================================================================
+  # ALTERNATE BRAIN — enabled but unpinned (TTL); never pin with gpt-oss-120b
+  # ===========================================================================
+
+  - name: qwen35-122b-a10b
+    enabled: true
+    type: vlm
+    role: brain
+    pin: false
+    ttl: 600
+    alias: brain-alt
+    repo: mlx-community/Qwen3.5-122B-A10B-4bit
+    ctx: 131072
+    est_mem_gb: 70
+    litellm:
+      description: "Qwen3.5-122B-A10B 4-bit (~70 GB). Alternate brain; unpinned with TTL. Vision-capable."
+      supports_function_calling: true
+      supports_tool_choice: true
+      supports_reasoning: true
+      supports_vision: true
+    source: "HF mlx-community/Qwen3.5-122B-A10B-4bit (~69.6 GB)"
+    notes: "Must NOT be pinned while gpt-oss-120b is pinned — budget check enforces this."
+
+  # ===========================================================================
+  # CANDIDATES — documented, not downloaded
+  # ===========================================================================
+
+  - name: qwen3-30b-a3b
+    enabled: false
+    type: llm
+    role: worker
+    pin: false
+    repo: mlx-community/Qwen3-30B-A3B-4bit
+    ctx: 131072
+    est_mem_gb: 18
+    litellm:
+      description: "Qwen3-30B-A3B 4-bit fallback worker if Qwen3.5 tool calling misbehaves."
+      supports_function_calling: true
+      supports_tool_choice: true
+      supports_reasoning: true
+    source: "HF mlx-community/Qwen3-30B-A3B-4bit (verify size before enabling)"
+    notes: "Enable and disable qwen35-35b-a3b if tool-use suite fails on 3.5."
+
+  - name: qwen2.5-vl-7b
+    enabled: false
+    type: vlm
+    role: vision
+    pin: false
+    ttl: 600
+    repo: mlx-community/Qwen2.5-VL-7B-Instruct-4bit
+    ctx: 65536
+    est_mem_gb: 5
+    litellm:
+      description: "Optional small VLM candidate."
+      supports_vision: true
+      supports_function_calling: false
+    source: "HF mlx-community/Qwen2.5-VL-7B-Instruct-4bit (verify before enabling)"
+    notes: "Optional; left disabled in the starter plan."

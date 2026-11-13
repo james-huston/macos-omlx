@@ -1,0 +1,49 @@
+# Hermes Agent — reference config for macos-omlx
+#
+# Copy relevant sections into ~/.hermes/config.yaml (or merge carefully).
+# Replace env var names with ones you already export; never commit real keys.
+#
+# Docs: https://hermes-agent.nousresearch.com/docs/
+# Fallback providers: https://hermes-agent.nousresearch.com/docs/user-guide/features/fallback-providers
+#
+# Requirements for agentic tool use:
+#   - Models offered to Hermes should be served/registered with ≥64k context
+#   - Verify tool calling with: make tool-use MODELS='gpt-oss-120b qwen35-35b-a3b'
+#   - Check fallbacks live: hermes fallback check --live
+#   - Switch models in-session with /model when configured
+
+model:
+  default: gpt-oss-120b          # brain — must match LiteLLM model_name
+  provider: custom
+  base_url: "${LITELLM_URL}/v1"  # e.g. http://litellm-host:4000/v1
+  # api_key from env — Hermes typically reads OPENAI_API_KEY or a key_env you set
+  # key_env: LITELLM_API_KEY
+
+# One direct paid provider that BYPASSES LiteLLM so Hermes keeps working if the
+# proxy is down. Adjust provider/model to whatever you already use.
+fallback_providers:
+  - provider: openai
+    model: gpt-4.1-mini
+    # key_env: OPENAI_API_KEY
+  # Optional: also list LiteLLM as a named custom fallback with another model:
+  # - provider: custom
+  #   model: qwen35-35b-a3b
+  #   base_url: "${LITELLM_URL}/v1"
+  #   key_env: LITELLM_API_KEY
+
+# Aux tasks → fast worker on this Mac (through LiteLLM)
+auxiliary:
+  compression:
+    base_url: "${LITELLM_URL}/v1"
+    # api_key / key_env: LITELLM_API_KEY
+    model: qwen35-35b-a3b
+  title_generation:
+    base_url: "${LITELLM_URL}/v1"
+    model: qwen35-35b-a3b
+
+# Notes
+# -----
+# - Field names evolve; re-check Hermes docs before relying on a new release.
+# - If the model prints raw tool-call JSON instead of invoking tools, the
+#   server's chat template / tool parsing is wrong — fix via tool-use suite,
+#   not by tweaking Hermes alone.

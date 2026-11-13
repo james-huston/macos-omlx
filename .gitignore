@@ -1,0 +1,30 @@
+# Local secrets / overrides
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Repo tooling venv (created by scripts/setup.sh)
+/.venv/
+
+# Tool-use suite local venv
+tests/tool_use/.venv/
+tests/tool_use/.venv/**
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+
+# Claude / agent local artifacts
+.claude/

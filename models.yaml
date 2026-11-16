@@ -130,6 +130,86 @@ models:
     notes: "Must NOT be pinned while gpt-oss-120b is pinned — budget check enforces this."
 
   # ===========================================================================
+  # CODING EVAL (story 002) — enabled, unpinned TTL; promote or disable after
+  # ===========================================================================
+
+  - name: qwen3-coder-30b
+    enabled: true
+    type: llm
+    role: worker
+    pin: false
+    ttl: 600
+    alias: coder-worker
+    repo: mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit
+    ctx: 131072
+    est_mem_gb: 17
+    decode_tps: 146
+    litellm:
+      description: "Qwen3-Coder-30B-A3B Instruct 4-bit (~17 GB). Coding worker eval (story 002)."
+      supports_function_calling: true
+      supports_tool_choice: false   # required_tool_choice failed 2026-11-16
+      supports_reasoning: true
+    source: "HF mlx-community/Qwen3-Coder-30B-A3B-Instruct-4bit (~16G on disk)"
+    notes: "Story 002: smoke+agentic PASS; required_tool_choice FAIL; decode ~146 tok/s; concurrency@2 weak (~1x)."
+
+  - name: glm47-flash
+    enabled: true
+    type: llm
+    role: worker
+    pin: false
+    ttl: 600
+    alias: glm-flash
+    repo: mlx-community/GLM-4.7-Flash-4bit
+    ctx: 131072
+    est_mem_gb: 17
+    decode_tps: 110
+    litellm:
+      description: "GLM-4.7-Flash 4-bit (~17 GB). Coding worker eval (story 002)."
+      supports_function_calling: true
+      supports_tool_choice: false   # required_tool_choice failed 2026-11-16
+      supports_reasoning: true
+    source: "HF mlx-community/GLM-4.7-Flash-4bit (~16G on disk)"
+    notes: "Story 002: smoke+agentic PASS; required_tool_choice FAIL; decode ~110 tok/s; concurrency@2 scales (~1.4x)."
+
+  - name: qwen3-coder-next
+    enabled: true
+    type: llm
+    role: brain
+    pin: false
+    ttl: 600
+    alias: coder-brain
+    repo: mlx-community/Qwen3-Coder-Next-4bit
+    ctx: 262144
+    est_mem_gb: 44
+    decode_tps: 106
+    litellm:
+      description: "Qwen3-Coder-Next 4-bit (~44 GB). Coding brain eval (story 002)."
+      supports_function_calling: true
+      supports_tool_choice: false   # required_tool_choice failed 2026-11-16
+      supports_reasoning: true
+    source: "HF mlx-community/Qwen3-Coder-Next-4bit (~42G on disk)"
+    notes: "Story 002: unload gpt-oss before loading. smoke+agentic PASS; decode ~106 tok/s; never pin with gpt-oss."
+
+  - name: glm45-air
+    enabled: true
+    type: llm
+    role: brain
+    pin: false
+    ttl: 600
+    alias: glm-air
+    repo: mlx-community/GLM-4.5-Air-4bit
+    ctx: 131072
+    est_mem_gb: 59
+    decode_tps: 59
+    litellm:
+      description: "GLM-4.5-Air 4-bit (~59 GB). Coding brain eval (story 002)."
+      supports_function_calling: true
+      supports_tool_choice: false   # required_tool_choice failed 2026-11-16
+      supports_reasoning: true
+    source: "HF mlx-community/GLM-4.5-Air-4bit (~56G on disk)"
+    notes: "Story 002: unload gpt-oss before loading. smoke+agentic PASS; decode ~59 tok/s (slower than Coder-Next)."
+
+  # ===========================================================================
   # CANDIDATES — documented, not downloaded
   # ===========================================================================
 

@@ -24,6 +24,6 @@ first** (write the story), **track progress** inside each story via the
 | # | Story | Status | Summary |
 |---|-------|--------|---------|
 | [001](001-bootstrap-macos-omlx.md) | Bootstrap macos-omlx — oMLX model host, owner-scoped LiteLLM sync, benchmarking | Review | Declarative Mac Studio oMLX host sibling to battlemage-llama. Validated on-box. |
-| [002](002-evaluate-coding-models.md) | Evaluate coding-specialist models (Qwen3-Coder + GLM Flash/Air) | Draft | Shortlist fits 128 GB; smoke, tool-use, Hermes coding tasks; promote/drop. |
+| [002](002-evaluate-coding-models.md) | Evaluate coding-specialist models (Qwen3-Coder + GLM Flash/Air) | InProgress | Shortlist fits 128 GB; smoke, tool-use, Hermes coding tasks; promote/drop. |
 
-_Overall: 0 done / 1 in review / 1 draft / 2 total._
+_Overall: 0 done / 1 in review / 1 in progress / 2 total._

@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+InProgress
 
 <!-- Draft -> Approved -> InProgress -> Review -> Done. Keep docs/stories/README.md table in sync. -->
 
@@ -64,21 +64,21 @@ but tool-use passes; `Qwen3-Coder-Next-6bit` if 4bit quality is soft and RAM all
 
 ## Tasks / Subtasks
 
-- [ ] Confirm HF ids + on-disk / resident sizes for the shortlist; fill `est_mem_gb` (AC: 1, 2)
-  - [ ] `Qwen3-Coder-Next-4bit`
-  - [ ] `Qwen3-Coder-30B-A3B-Instruct-4bit`
-  - [ ] `GLM-4.7-Flash-4bit`
-  - [ ] `GLM-4.5-Air-4bit`
-- [ ] Add shortlist entries to `models.yaml` (candidates first) (AC: 1)
-- [ ] Download one-at-a-time; never pin two brains (AC: 2, 3)
-  - [ ] Workers (Flash, Coder-30B) with current pinned stack still up
-  - [ ] Brains (Coder-Next, Air): unpin/unload `gpt-oss-120b` before load
-- [ ] Smoke + tool-use suite per model; paste results into Completion Notes (AC: 3, 4)
-- [ ] Hermes coding task matrix (same prompt/repo for all lanes) (AC: 5)
-- [ ] Bench survivors; optional `--update-manifest` (AC: 6)
-- [ ] Write promote/drop decision + residency plan (AC: 7)
-- [ ] If promoting: enable in yaml, sync LiteLLM, refresh app-config templates (AC: 8, 9)
-- [ ] Update this story + `docs/stories/README.md` to Review (AC: 10)
+- [x] Confirm HF ids + on-disk / resident sizes for the shortlist; fill `est_mem_gb` (AC: 1, 2)
+  - [x] `Qwen3-Coder-Next-4bit` (~42G disk / ~44 GB est)
+  - [x] `Qwen3-Coder-30B-A3B-Instruct-4bit` (~16G disk / ~17 GB est)
+  - [x] `GLM-4.7-Flash-4bit` (~16G disk / ~17 GB est)
+  - [x] `GLM-4.5-Air-4bit` (~56G disk / ~59 GB est)
+- [x] Add shortlist entries to `models.yaml` (enabled, unpinned TTL) (AC: 1)
+- [x] Download + Admin reload/settings; never pin two brains (AC: 2, 3)
+  - [x] Workers (Flash, Coder-30B) with current pinned stack still up
+  - [x] Brains (Coder-Next, Air): unpin/unload `gpt-oss-120b` before load
+- [x] Smoke + tool-use suite per model; paste results into Completion Notes (AC: 3, 4)
+- [x] Coding challenge matrix (idempotent ledger + hidden pytest) (AC: 5)
+- [x] Quick bench survivors (`QUICK=1`); decode_tps noted in yaml (AC: 6)
+- [ ] Write final promote/drop decision after Hermes matrix (AC: 7) — provisional below
+- [x] Synced all four to LiteLLM for Hermes trials (AC: 8); templates unchanged until promote (AC: 9)
+- [ ] Update this story + `docs/stories/README.md` to Review after Hermes matrix (AC: 10)
 
 ## Dev Notes
 
@@ -147,11 +147,55 @@ decision is to replace it.
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
 | 2026-11-16 | 0.1 | Initial draft — shortlist Qwen3-Coder + GLM Flash/Air | James / Auto |
+| 2026-11-16 | 0.2 | Downloads, smoke, tool-use, quick bench; LiteLLM sync; provisional lean | Auto |
+| 2026-11-16 | 0.3 | Idempotent-ledger coding eval harness + four-model scorecard | Auto |
 
 ## Dev Agent Record
 
 ### Completion Notes
 
+**2026-11-16 — automated eval on Studio**
+
+Downloads + `/admin/api/reload` → 8 models discovered. Aliases applied via `make models-apply NO_DOWNLOAD=1`.
+LiteLLM: added `bingc-studio5-{qwen3-coder-next,qwen3-coder-30b,glm47-flash,glm45-air}`.
+Primary `gpt-oss-120b` re-pinned after brain tests.
+
+| Model | Smoke | Agentic-scale | required_tool_choice | parallel | Decode @1k | Notes |
+|-------|-------|---------------|----------------------|----------|------------|-------|
+| `qwen3-coder-30b` | OK | PASS | FAIL | PASS | ~146 tok/s | Concurrency@2 ~flat (0.95×) |
+| `glm47-flash` | OK | PASS | FAIL | PASS | ~110 tok/s | Concurrency@2 ~1.4× |
+| `qwen3-coder-next` | OK | PASS | FAIL | PASS | ~106 tok/s | Needs gpt-oss unloaded; prefix-cache −92% TTFT |
+| `glm45-air` | OK | PASS | FAIL | PASS | ~59 tok/s | Slower brain; needs gpt-oss unloaded |
+
+`required_tool_choice` FAIL matches existing gpt-oss / qwen35 workers — mark `supports_tool_choice: false`.
+
+**Provisional promote lean (pending Hermes coding matrix):**
+- Brain lane: prefer **`qwen3-coder-next`** over Air (speed + coding-specialist).
+- Worker lane: **`glm47-flash`** if concurrency matters; **`qwen3-coder-30b`** if Qwen-family consistency / peak single-stream speed.
+- Air: keep as optional alt or drop if Hermes matrix doesn’t beat Coder-Next.
+
+**Coding challenge (2026-11-16):** mid-level *idempotent ledger* (`tests/coding_eval/`).
+Hidden oracle: 13 pytest cases. Model must emit `ledger.py` only; we score it.
+
+| Model | Result | Notes |
+|-------|--------|-------|
+| `qwen3-coder-next` | **13/13 PASS** | Clean; ~20s gen |
+| `glm45-air` | **13/13 PASS** | Clean; ~78s gen |
+| `qwen3-coder-30b` | 9/13 FAIL | Idempotency bugs + typo `_account` vs `_accounts` |
+| `glm47-flash` | 4/13 FAIL* | First run: thinking burned 4096 tokens (PARSE_FAIL). Retry w/ thinking off: code emitted but missing `__init__` (`_idempotency_store`) |
+
+\*Flash needs `chat_template_kwargs.enable_thinking=false` (wired into `run_eval.py`).
+
+**Provisional promote lean (updated):**
+- Brain: **`qwen3-coder-next`** (speed + perfect challenge) over Air (also perfect, slower).
+- Worker: neither Flash nor Coder-30B cleared the ledger bar; keep both unpinned for more tasks or prefer Coder-Next as coding lane and keep `qwen35-35b-a3b` as general worker.
+- Still open: final promote/drop + Hermes live smoke if desired (AC 7).
+
 ### File List
+
+- `models.yaml` (shortlist enabled + measured sizes/tps)
+- `docs/stories/002-evaluate-coding-models.md`, `docs/stories/README.md`
+- `tests/coding_eval/` (PROMPT, hidden tests, `run_eval.py`)
+- `benchmarks/results/2026-11-16-host.jsonl`
 
 ## QA Results
